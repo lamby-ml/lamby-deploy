@@ -1,0 +1,30 @@
+{
+  "name": "lamby-deploy",
+  "version": "0.0.1",
+  "description": "Cookie cutter API for lamby models",
+  "main": "index.js",
+  "repository": "git@github.com:lamby-ml/lamby-deploy.git",
+  "author": "The lamby team. http://lambyml.com",
+  "license": "MIT",
+  "devDependencies": {
+    "eslint": "^5.16.0",
+    "eslint-config-prettier": "^4.1.0",
+    "eslint-config-react": "^1.1.7",
+    "eslint-plugin-import": "^2.16.0",
+    "eslint-plugin-jsx-a11y": "^6.2.1",
+    "eslint-plugin-prettier": "^3.0.1",
+    "eslint-plugin-react": "^7.12.4",
+    "prettier": "^1.16.4"
+  },
+  "eslint": {
+    "extends": ["airbnb", "prettier"],
+    "plugins": ["prettier"],
+    "rules": {
+      "prettier/prettier": ["error"]
+    }
+  },
+  "prettier": {
+    "printWidth": 100,
+    "singleQuote": true
+  }
+}
