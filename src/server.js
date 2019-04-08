@@ -4,11 +4,9 @@ import cors from 'cors';
 import express from 'express';
 import morgan from 'morgan';
 
-import { Tensor, InferenceSession } from 'onnxjs';
+import { Tensor } from 'onnxjs';
 
 const env = process.env.NODE_ENV || 'development';
-
-const session = new InferenceSession();
 
 const app = express();
 
@@ -39,12 +37,14 @@ app.get('/', async (req, res) => {
   res.send(message);
 });
 
-app.get('/predict', async (req, res) => {
-  const inputs = [new Tensor(new Float32Array([req.body.values]), 'float32', [2, 2])];
-  const outputMap = await session.run(inputs);
-  const outputTensor = outputMap.values().next().value;
+app.post('/predict', async (req, res) => {
+  const { values } = req.body;
+  const inputs = [new Tensor(new Float32Array(values), 'float32', [2, 2])];
+  res.status(200).json({ inputs });
 
-  res.send({ outputTensor });
+  // const outputMap = await session.run(inputs);
+  // const outputTensor = outputMap.values().next().value;
+  // res.send({ outputTensor });
 });
 
 export default app;
