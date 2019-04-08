@@ -6,21 +6,47 @@
   "repository": "git@github.com:lamby-ml/lamby-deploy.git",
   "author": "The lamby team. http://lambyml.com",
   "license": "MIT",
+  "scripts": {
+    "start": "babel-node src/index.js",
+    "watch": "nodemon --exec yarn run start",
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "precommit": "yarn run eslint --fix ."
+  },
+  "dependencies": {
+    "body-parser": "^1.18.3",
+    "cors": "^2.8.5",
+    "express": "^4.16.4",
+    "morgan": "^1.9.1",
+    "onnxjs": "^0.1.5"
+  },
   "devDependencies": {
+    "@babel/core": "^7.4.3",
+    "@babel/node": "^7.2.2",
+    "@babel/preset-env": "^7.4.3",
     "eslint": "^5.16.0",
+    "eslint-config-airbnb": "^17.1.0",
     "eslint-config-prettier": "^4.1.0",
     "eslint-config-react": "^1.1.7",
     "eslint-plugin-import": "^2.16.0",
     "eslint-plugin-jsx-a11y": "^6.2.1",
     "eslint-plugin-prettier": "^3.0.1",
     "eslint-plugin-react": "^7.12.4",
+    "nodemon": "^1.18.10",
     "prettier": "^1.16.4"
   },
   "eslint": {
-    "extends": ["airbnb", "prettier"],
-    "plugins": ["prettier"],
+    "extends": [
+      "airbnb",
+      "prettier"
+    ],
+    "plugins": [
+      "prettier"
+    ],
     "rules": {
-      "prettier/prettier": ["error"]
+      "no-console": 0,
+      "prettier/prettier": [
+        "error"
+      ]
     }
   },
   "prettier": {
