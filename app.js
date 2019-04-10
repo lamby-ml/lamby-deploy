@@ -4,6 +4,7 @@ const express = require('express');
 const app = express();
 const session = new InferenceSession({ backendHint: 'cpu' });
 const port = process.env.LAMBY_DEPLOY_PORT || 3000;
+const modelFile = process.env.LAMBY_DEPLOY_MODEL_FILE || './model.onnx';
 
 async function evaluate(req, res) {
   const { data, shape } = req.body;
@@ -27,7 +28,7 @@ function zeroTensor(shape) {
 }
 
 session
-  .loadModel('./model.onnx')
+  .loadModel(modelFile)
   .then(() => console.log('Onnx model successfully loaded.'));
 
 app.use(express.json());
