@@ -59,23 +59,25 @@ const registerRoutes = app => {
   return app;
 };
 
-const downloadAndUnzip = async url => {
-  const buffer = [];
-
-  http.get(url, res => {
+const downloadAndUnzip = async url => {  
+  return new Promise((resolve, reject) => {
+    const buffer = [];
     const gunzip = zlib.createGunzip();
-    res.pipe(gunzip);
-
-    gunzip
-      .on('data', data => {
-        buffer.push(data.toString());
-      })
-      .on('end', () => {
-        return buffer.join('');
-      })
-      .on('error', error => {
-        throw error;
-      });
+    http.get(url, res => {
+      
+      res.pipe(gunzip);
+  
+      gunzip
+        .on('data', data => {
+          buffer.push(data);
+        })
+        .on('end', () => {
+          resolve(buffer.join(''));
+        })
+        .on('error', error => {
+          reject(error);
+        });
+    });
   });
 };
 
