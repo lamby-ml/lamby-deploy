@@ -83,14 +83,17 @@ const downloadAndUnzip = async url => {
 
 const createSession = async () => {
   const session = new InferenceSession();
-
-  if (process.env.ONNX_MODEL_URI !== undefined) {
-    const modelBuffer = await downloadAndUnzip(process.env.ONNX_MODEL_URI);
-    await session.loadModel(modelBuffer);
-  } else {
-    await session.loadModel('./src/data/model.onnx');
+  try{
+    if (process.env.ONNX_MODEL_URI !== undefined) {
+      const modelBuffer = await downloadAndUnzip(process.env.ONNX_MODEL_URI);
+      await session.loadModel(modelBuffer);
+    } else {
+      await session.loadModel('./src/data/model.onnx');
+    }
   }
-
+  catch(err){
+    console.error(err);
+  }
   return session;
 };
 
