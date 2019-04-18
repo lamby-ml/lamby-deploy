@@ -1,6 +1,5 @@
 import http from 'http';
 import os from 'os';
-import zlib from 'zlib';
 
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -59,24 +58,16 @@ const registerRoutes = app => {
   return app;
 };
 
-const downloadAndUnzip = async url => {  
+const download = async url => {
   return new Promise((resolve, reject) => {
     const buffer = [];
-    const gunzip = zlib.createGunzip();
     http.get(url, res => {
-      
-      res.pipe(gunzip);
-  
-      gunzip
-        .on('data', data => {
-          buffer.push(data);
-        })
-        .on('end', () => {
-          resolve(buffer.join(''));
-        })
-        .on('error', error => {
-          reject(error);
-        });
+
+      res.on('data', data => buffer.push(data));
+
+      res.on('end', () => resolve(Buffer.concat(buffer)));
+
+      res.on('error',  err => reject(err));
     });
   });
 };
@@ -85,7 +76,7 @@ const createSession = async () => {
   const session = new InferenceSession();
   try{
     if (process.env.ONNX_MODEL_URI !== undefined) {
-      const modelBuffer = await downloadAndUnzip(process.env.ONNX_MODEL_URI);
+      const modelBuffer = await download(process.env.ONNX_MODEL_URI);
       await session.loadModel(modelBuffer);
     } else {
       await session.loadModel('./src/data/model.onnx');
