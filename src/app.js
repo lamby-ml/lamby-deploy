@@ -40,7 +40,7 @@ const registerRoutes = app => {
     if (req.query.id !== 'accuracy') {
       res.render('index.ejs', {
         hostname: os.hostname(),
-        commit_id: '5d7c65',
+        commit_id: COMMIT_ID,
         model_shape: JSON.stringify(MODEL_SHAPE)
       });
     }
@@ -66,6 +66,7 @@ const registerRoutes = app => {
       const { val, lab, outputApply, dim, name } = req.body;
 
       let output_apply_func = null;
+      
       if (outputApply === 'max') {
         output_apply_func = map => {
           return Object.keys(map).reduce((a, b) => (map[a] > map[b] ? a : b));
@@ -75,13 +76,17 @@ const registerRoutes = app => {
       let labels = [];
 
       let correct = 0;
+
       for (var i = 0; i < val.length; i++) {
         const outputMap = await app.locals.session.run([
           new Tensor(new Float32Array(val[i]), 'float32', dim)
         ]);
+
         const outputTensor = outputMap.values().next().value;
         let output = output_apply_func(outputTensor.data);
+
         labels.push(output);
+
         if (Number(output) === Number(lab[i])) {
           correct++;
         }
