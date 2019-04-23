@@ -1,5 +1,6 @@
 import http from 'http';
 import os from 'os';
+import path from 'path';
 
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -8,10 +9,16 @@ import morgan from 'morgan';
 
 import { Tensor, InferenceSession } from 'onnxjs';
 
+let MODEL_SHAPE = [];
+const COMMIT_ID = process.env.ONNX_COMMIT_ID;
+
 const registerMiddleware = async app => {
   const env = process.env.NODE_ENV || 'development';
 
+  app.set('views', path.join(__dirname, 'templates'));
+  app.set('view engine', 'ejs');
   app.use(cors());
+  app.use('/static', express.static('src/public'));
   app.use(bodyParser.json());
   app.use(bodyParser.urlencoded({ extended: true }));
 
@@ -30,14 +37,13 @@ const registerMiddleware = async app => {
 
 const registerRoutes = app => {
   app.get('/', async (req, res) => {
-    const message = `
-      <h1>Your API is up and running successfully!</h1>
-      <h3>Here is an example on how to use your model to predict values using squeezenet</h3>
-      <p>
-        curl -H "Content-Type: application/json" -X POST
-          -d '{ "values": [1.0, ..., 2.0], "dim": [1, 3, 224, 224] }' http://${os.hostname()}/predict
-      </p>`;
-    res.send(message);
+    if (req.query.id !== 'accuracy') {
+      res.render('index.ejs', {
+        hostname: os.hostname(),
+        commit_id: '5d7c65',
+        model_shape: JSON.stringify(MODEL_SHAPE)
+      });
+    }
   });
 
   app.post('/predict', async (req, res) => {
@@ -55,6 +61,38 @@ const registerRoutes = app => {
     }
   });
 
+  app.post('/accuracy', async (req, res) => {
+    try {
+      const { val, lab, outputApply, dim, name } = req.body;
+
+      let output_apply_func = null;
+      if (outputApply === 'max') {
+        output_apply_func = map => {
+          return Object.keys(map).reduce((a, b) => (map[a] > map[b] ? a : b));
+        };
+      }
+
+      let labels = [];
+
+      let correct = 0;
+      for (var i = 0; i < val.length; i++) {
+        const outputMap = await app.locals.session.run([
+          new Tensor(new Float32Array(val[i]), 'float32', dim)
+        ]);
+        const outputTensor = outputMap.values().next().value;
+        let output = output_apply_func(outputTensor.data);
+        labels.push(output);
+        if (Number(output) === Number(lab[i])) {
+          correct++;
+        }
+      }
+      let accuracy = correct / val.length;
+      res.status(200).json({ name: name, output: labels, accuracy });
+    } catch (error) {
+      res.status(400).json({ message: error.message });
+    }
+  });
+
   return app;
 };
 
@@ -62,27 +100,29 @@ const download = async url => {
   return new Promise((resolve, reject) => {
     const buffer = [];
     http.get(url, res => {
-
       res.on('data', data => buffer.push(data));
 
       res.on('end', () => resolve(Buffer.concat(buffer)));
 
-      res.on('error',  err => reject(err));
+      res.on('error', err => reject(err));
     });
   });
 };
 
 const createSession = async () => {
   const session = new InferenceSession();
-  try{
+  try {
     if (process.env.ONNX_MODEL_URI !== undefined) {
       const modelBuffer = await download(process.env.ONNX_MODEL_URI);
       await session.loadModel(modelBuffer);
     } else {
       await session.loadModel('./src/data/model.onnx');
     }
-  }
-  catch(err){
+    let values = session.session._model.graph.getValues();
+    let indices = session.session._model.graph.getInputIndices();
+    let shape = values[indices[0]].type.shape.dims;
+    MODEL_SHAPE = shape;
+  } catch (err) {
     console.error(err);
   }
   return session;
