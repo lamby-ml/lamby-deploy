@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <title>
+        <%= commit_id %> - Lamby Deployment
+    </title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+    <link rel="shortcut icon" href="/static/img/favicon.ico" />
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+
+    <!-- UIkit CSS -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.3/css/uikit.min.css" />
+    <!-- UIkit Data Tables CSS -->
+    <link rel="stylesheet" href="https://cdn.datatables.net/1.10.19/css/dataTables.uikit.min.css" />
+    <!-- UIkit JS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.3/js/uikit.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uikit/3.0.3/js/uikit-icons.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.js"></script>
+    <!-- UIkit Data Tables JS -->
+    <script src="https://cdn.datatables.net/1.10.19/js/jquery.dataTables.min.js"></script>
+    <script src="https://cdn.datatables.net/1.10.19/js/dataTables.uikit.min.js"></script>
+</head>
+
+<body>
+    <nav class="uk-navbar-container uk-navbar-transparent" uk-navbar>
+        <div class="uk-navbar-left">
+            <a class="uk-navbar-item uk-logo" href="#">
+                <img src="/static/img/lamby.svg" width="45" height="45" />
+            </a>
+        </div>
+    </nav>
+
+    <div class="content" style="margin: 10px 5% 0px 5%;">
+        <h1>Welcome to your API for commit
+            <%= commit_id %>!</h1>
+        <!-- <ul class="uk-flex-center" uk-tab>
+            <li class="uk-active">
+                <a href="/?action=predict">Predict</a>
+            </li>
+            <li>
+                <a href="/?action=accuracy">Accuracy</a>
+            </li>
+        </ul> -->
+
+        <h2>Predict</h2>
+        <h4>REST /predict Request Schema</h4>
+        <pre><code>POST /predict HTTP/1.1
+Host: <%= hostname %>
+Content-Type: application/json
+{
+  "values": [1.0, 2.0, ... , 1.3],
+  "dim" : <%= model_shape %>
+}
+</code></pre>
+
+        <!-- <h4>curl Command</h4>
+        <pre><code>curl -H "Content-Type: application/json" -X POST -d '{ "values": [1.0, ..., 2.0], "dim": <%= model_shape %> }' http://<%= hostname %>/predict</code></pre> -->
+        <h4>Try Predict</h4>
+
+        <p>Upload a json file or an image file to get an output.</p>
+        <div class="js-upload uk-placeholder uk-text-center">
+            <span uk-icon="icon: cloud-upload"></span>
+            <span class="uk-text-middle">Attach binaries by dropping them here or</span>
+            <div uk-form-custom>
+                <input id="predict-file" type="file" />
+                <span class="uk-link">selecting one</span>
+            </div>
+        </div>
+
+        <progress id="predict-js-progressbar" class="uk-progress" value="5" max="100" hidden></progress>
+        <h4>Predict Output</h4>
+        <pre><code id="predict-output">
+
+
+        </code></pre>
+        <h2>Accuracy</h2>
+        <h4>REST /accuracy Request Schema</h4>
+        <pre><code>POST /accuracy HTTP/1.1
+Host: <%= hostname %>
+Content-Type: application/json
+{
+    "values": [[1.0, 2.0, ... , 1.3], ...],
+    "labels": [1, 2, 0 ..., 1],
+    "dim" : <%= model_shape %>,
+    "outputMap" : "max"
+}
+</code></pre>
+
+        <h4>Try Accuracy</h4>
+
+        <p>
+            Select multiple images or a single json file to calculate accuracy. If you are selecting images, make sure the names of the files end with "_label".
+        </p>
+        <div class="js-upload uk-placeholder uk-text-center">
+            <span uk-icon="icon: cloud-upload"></span>
+            <span class="uk-text-middle">Attach binaries by dropping them here or</span>
+            <div uk-form-custom>
+                <input id="accuracy-file" type="file" multiple />
+                <span class="uk-link">selecting them</span>
+            </div>
+        </div>
+
+        <progress id="accuracy-js-progressbar" class="uk-progress" value="5" max="100" hidden></progress>
+        <h4>Accuracy Output</h4>
+        <pre><code id="accuracy-output">
+
+
+</code></pre>
+    </div>
+
+    <script>
+        var shape = <%= model_shape %>;
+        var shapeX = shape.slice(-1)[0];
+        var shapeY = shape.slice(-2)[0];
+        var predictProgressBar = document.getElementById('predict-js-progressbar');
+        var accuracyProgressBar = document.getElementById('accuracy-js-progressbar');
+        document.getElementById('predict-file').onchange = function(evt) {
+            if (!window.FileReader) return; // Browser is not compatible
+
+            var reader = new FileReader();
+
+            var file_ext = evt.target.files[0].name.split('.').pop().toLowerCase();
+            var image_types = ['jpg', 'jpeg', 'png', 'gif'];
+
+            reader.onload = function(evt) {
+                if (evt.target.readyState != 2) return;
+                if (evt.target.error) {
+                    alert('Error while reading file');
+                    return;
+                }
+
+                filecontent = evt.target.result;
+                predictProgressBar.setAttribute('value', '100');
+                setTimeout(function() {
+                    predictProgressBar.setAttributeNode(document.createAttribute('hidden'));
+                }, 400);
+
+                if (image_types.includes(file_ext)) {
+                    var image = new Image();
+                    image.src = 'data:image/' + file_ext + ';base64,' + encode(new Uint8Array(evt.target.result));
+                    image.onload = function() {
+                        var canvas = document.createElement('canvas');
+                        var context = canvas.getContext('2d');
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+
+                        context.drawImage(image, 0, 0, image.width, image.height, 0, 0, shapeX, shapeY);
+                        predict(canvas_to_grayscale(context));
+                    };
+                } else {
+                    var json_string = new TextDecoder("utf-8").decode(new Uint8Array(evt.target.result));
+                    var json_data = JSON.parse(json_string);
+                    predict(json_data["values"]);
+                }
+
+            };
+
+            predictProgressBar.removeAttribute('hidden');
+            reader.readAsArrayBuffer(evt.target.files[0]);
+        };
+
+        document.getElementById('accuracy-file').onchange = function(evt) {
+            if (evt.target.files.length == 1) {
+                if (evt.target.files[0].name.split('.').pop() === 'json') {
+                    return;
+                }
+            }
+
+            var input_label_pairs = [];
+
+            var labels = [];
+            var names = [];
+            var vals = [];
+
+            var complete = false;
+            var num_files = evt.target.files.length;
+
+            function convert_files(evt, i) {
+                accuracyProgressBar.setAttribute('value', '' + i / num_files * 100);
+                var label = evt.target.files[i].name.split('.').slice(-2)[0].split('_').slice(-1)[0];
+                names.push(evt.target.files[i].name);
+                labels.push(label);
+                var reader = new FileReader();
+                var file_ext = evt.target.files[i].name.split('.').pop().toLowerCase();
+                reader.onload = function(revt) {
+                    if (revt.target.readyState != 2) return;
+                    if (revt.target.error) {
+                        alert('Error while reading file');
+                        return;
+                    }
+
+                    filecontent = revt.target.result;
+                    console.log(revt);
+                    var image = new Image();
+                    image.src = 'data:image/' + file_ext + ';base64,' + encode(new Uint8Array(revt.target.result));
+                    image.onload = function() {
+                        var canvas = document.createElement('canvas');
+                        var context = canvas.getContext('2d');
+                        canvas.width = image.width;
+                        canvas.height = image.height;
+
+                        context.drawImage(image, 0, 0, image.width, image.height, 0, 0, shapeX, shapeY);
+
+                        vals.push(canvas_to_grayscale(context));
+                        if (vals.length == num_files && !complete) {
+                            setTimeout(function() {
+                                accuracyProgressBar.setAttributeNode(document.createAttribute('hidden'));
+                            }, 300);
+                            complete = true;
+                            accuracy({
+                                lab: labels,
+                                val: vals,
+                                outputApply: "max",
+                                dim: shape,
+                                name: names
+                            });
+                        } else {
+                            convert_files(evt, i + 1);
+                        }
+                    };
+                };
+                reader.readAsArrayBuffer(evt.target.files[i]);
+            }
+            convert_files(evt, 0);
+            accuracyProgressBar.removeAttribute('hidden');
+        };
+
+        function canvas_to_grayscale(ctx) {
+            var data = ctx.getImageData(0, 0, shapeX, 28).data;
+            var gdata = [];
+            for (var i = 0; i < shapeX * shapeY; i++) {
+                gdata[i] =
+                    (0.2126 * data[i * 4]) / 255 +
+                    (0.7152 * data[i * 4 + 1]) / 255 +
+                    (0.0722 * data[i * 4 + 2]) / 255;
+            }
+            return gdata;
+        }
+
+        function predict(values) {
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/predict', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(
+                JSON.stringify({
+                    values: values,
+                    dim: shape
+                })
+            );
+            xhr.onload = function() {
+                var jsonResponse = xhr.response;
+                var response = JSON.parse(xhr.response);
+                var output = {
+                    data: response.result.data,
+                    dims: response.result.dims
+                };
+                document.getElementById('predict-output').innerHTML = JSON.stringify(output, null, 2);
+            };
+        }
+
+        function accuracy(payload) {
+
+            var xhr = new XMLHttpRequest();
+            xhr.open('POST', '/accuracy', true);
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.send(
+                JSON.stringify(payload)
+            );
+
+            xhr.onload = function() {
+                var jsonResponse = xhr.response;
+                var response = JSON.parse(xhr.response);
+                // var output = {
+                //     accuracy: response.result.accuracy,
+                //     output: response.result.labels
+                //};
+                document.getElementById('accuracy-output').innerHTML = JSON.stringify(response, null, 2);
+            };
+        }
+
+        function encode(input) {
+            var keyStr = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=';
+            var output = '';
+            var chr1, chr2, chr3, enc1, enc2, enc3, enc4;
+            var i = 0;
+
+            while (i < input.length) {
+                chr1 = input[i++];
+                chr2 = i < input.length ? input[i++] : Number.NaN; // Not sure if the index
+                chr3 = i < input.length ? input[i++] : Number.NaN; // checks are needed here
+
+                enc1 = chr1 >> 2;
+                enc2 = ((chr1 & 3) << 4) | (chr2 >> 4);
+                enc3 = ((chr2 & 15) << 2) | (chr3 >> 6);
+                enc4 = chr3 & 63;
+
+                if (isNaN(chr2)) {
+                    enc3 = enc4 = 64;
+                } else if (isNaN(chr3)) {
+                    enc4 = 64;
+                }
+                output +=
+                    keyStr.charAt(enc1) + keyStr.charAt(enc2) + keyStr.charAt(enc3) + keyStr.charAt(enc4);
+            }
+            return output;
+        }
+    </script>
+</body>
+
+</html>

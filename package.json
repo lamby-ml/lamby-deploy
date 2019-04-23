@@ -10,7 +10,7 @@
     "start": "babel-node src/index.js",
     "watch": "nodemon --exec yarn run start",
     "test": "echo \"Error: no test specified\" && exit 1",
-    "precommit": "yarn run eslint --fix ."
+    "precommit": "yarn run eslint -c package.json --fix ."
   },
   "dependencies": {
     "@babel/core": "^7.4.3",
@@ -18,6 +18,7 @@
     "@babel/preset-env": "^7.4.3",
     "body-parser": "^1.18.3",
     "cors": "^2.8.5",
+    "ejs": "^2.6.1",
     "express": "^4.16.4",
     "morgan": "^1.9.1",
     "onnxjs": "^0.1.5"
