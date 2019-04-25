@@ -40,7 +40,7 @@ const registerRoutes = app => {
     if (req.query.id !== 'accuracy') {
       res.render('index.ejs', {
         hostname: os.hostname(),
-        commit_id: COMMIT_ID,
+        commit_id: COMMIT_ID === undefined? "" : COMMIT_ID.substring(0,6),
         model_shape: JSON.stringify(MODEL_SHAPE)
       });
     }
